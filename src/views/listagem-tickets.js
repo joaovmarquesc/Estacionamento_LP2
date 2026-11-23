@@ -6,6 +6,7 @@ import Stack from '@mui/material/Stack';
 import { IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import PaidIcon from '@mui/icons-material/Paid';
 
 function ListagemTickets() {
   const navigate = useNavigate();
@@ -19,19 +20,32 @@ function ListagemTickets() {
     navigate(`/cadastro-tickets/${id}`);
   };
 
+  const encerrarTicket = (id) => {
+    navigate(`/cadastro-pagamentos?ticketId=${id}`);
+  };
+
   const excluir = (id) => {
-    setTickets(tickets.filter((item) => item.id !== id));
+    const novaLista = tickets.filter((item) => item.id !== id);
+    setTickets(novaLista);
+    localStorage.setItem('tickets_salvos', JSON.stringify(novaLista));
   };
 
   useEffect(() => {
-    axios.get('/db.json')
-      .then(response => {
-        const lista = response.data.tickets || [];
-        setTickets(lista);
-      })
-      .catch(error => {
-        console.error("Erro ao buscar tickets:", error);
-      });
+    const ticketsLocal = JSON.parse(localStorage.getItem('tickets_salvos'));
+
+    if (ticketsLocal && ticketsLocal.length > 0) {
+      setTickets(ticketsLocal);
+    } else {
+      axios.get('/db.json')
+        .then(response => {
+          const lista = response.data.tickets || [];
+          setTickets(lista);
+          localStorage.setItem('tickets_salvos', JSON.stringify(lista));
+        })
+        .catch(error => {
+          console.error("Erro ao buscar tickets:", error);
+        });
+    }
   }, []);
 
   return (
@@ -58,29 +72,44 @@ function ListagemTickets() {
                     <th scope='col'>Valor Total</th>
                     <th scope='col'>Status</th>
                     <th scope='col'>Ações</th>
-
                   </tr>
                 </thead>
-             <tbody>
+                <tbody>
                   {tickets.map((dado) => (
                     <tr key={dado.id}>
                       <td>{dado.id}</td>
-                      <td><strong>{dado.placa}</strong></td> 
+                      <td><strong>{dado.placa}</strong></td>
                       <td>{dado.categoria}</td>
                       <td>{dado.dataEntrada} às {dado.horaEntrada}</td>
                       <td>{dado.dataSaida ? `${dado.dataSaida} às ${dado.horaSaida}` : 'Em aberto'}</td>
-                      <td>{dado.valorTotal ? `${dado.valorTotal}` : '-'}</td>
-                      <td>{dado.status}</td>
+                      <td>{dado.valorTotal ? `R$ ${Number(dado.valorTotal).toFixed(2)}` : '-'}</td>
+                      <td>
+                        <span className={`badge ${dado.status === 'ABERTO' ? 'bg-warning text-dark' : 'bg-success'}`}>
+                          {dado.status}
+                        </span>
+                      </td>
                       <td>
                         <Stack spacing={1} padding={0} direction='row'>
+                          {dado.status === 'ABERTO' && (
+                            <IconButton
+                              aria-label='encerrar'
+                              title='Encerrar e Pagar Ticket'
+                              color='success'
+                              onClick={() => encerrarTicket(dado.id)}
+                            >
+                              <PaidIcon />
+                            </IconButton>
+                          )}
                           <IconButton
                             aria-label='edit'
+                            title='Editar'
                             onClick={() => editar(dado.id)}
                           >
                             <EditIcon />
                           </IconButton>
                           <IconButton
                             aria-label='delete'
+                            title='Excluir'
                             onClick={() => excluir(dado.id)}
                           >
                             <DeleteIcon />
